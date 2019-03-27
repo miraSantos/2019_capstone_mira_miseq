@@ -17,6 +17,7 @@ help(package="dada2")
 
 #following this tutorial: https://benjjneb.github.io/dada2/tutorial.html
 # set up basepath  ---------------------------------------------------------
+library("dada2")
 base.path = "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/"
 list.files(base.path)
 fq.base.path <- paste(base.path,"/sequencing_data/fastq_files/",sep="")
@@ -58,7 +59,7 @@ sample.names[[2]][[2]] <- sapply(strsplit(basename(fq.file.names[[2]]$fnRs), "_"
 
 sample.names
 
-plot.path <- paste(base.path,"/Plots",sep="")
+plot.path <- paste(base.path,"/Quality_Score_Plots",sep="")
 dir.create(plot.path)
 
 
@@ -94,7 +95,7 @@ dir.create(paste(base.path,"/filtered",sep=""))
 filtered.names <- rep(list(list(list(),list())),length(sub.path))
 names(filtered.names) <- subfile.names
 for (ii in 1: length(sub.path)){
-  names(filtered.names[[ii]]) <- c("fnFs","fnRs")  
+  names(filtered.names[[ii]]) <- c("filtFs","filtRs")  
 }
 
 for (ii in 1: length(sub.path)){
@@ -102,6 +103,66 @@ for (ii in 1: length(sub.path)){
   filtRs <- file.path(base.path, "filtered", paste0(sample.names[[ii]][[2]], "_R_filt.fastq.gz"))
   filtered.names[[ii]][[1]] <- filtFs
   filtered.names[[ii]][[2]] <- filtRs
-  names(filtered.names[[ii]]) <- c("fnFs","fnRs")  
 }
+
+
+# filtering and trimming --------------------------------------------------
+
+filtered.files <- rep(list(list(list(),list())),length(sub.path))
+names(filtered.files) <- subfile.names
+for (ii in 1: length(sub.path)){
+  names(filtered.files[[ii]]) <- c("filtFs","filtRs")  
+}
+
+#test run
+
+
+
+trimmed.Bact <- filterAndTrim(fq.file.names[[1]][[1]], filtered.names[[1]][[1]], fq.file.names[[1]][[2]], filtered.names[[1]][[2]], truncLen=0,
+                     maxN=0, truncQ=2, rm.phix=FALSE,
+                     compress=TRUE, multithread=FALSE)
+head(trimmed.Bact)
+
+trimmed.Euk <- filterAndTrim(fq.file.names[[2]][[1]], filtered.names[[2]][[1]], fq.file.names[[2]][[2]], filtered.names[[2]][[2]], truncLen=0,
+                               maxN=0, truncQ=2, rm.phix=FALSE,
+                               compress=TRUE, multithread=FALSE)
+head(trimmed.Euk)
+
+
+  # out <- filterAndTrim(fq.file.names[[ii]]$fnFs, filtered.names[[ii]]$filtFs, fq.file.names[[ii]]$fnRs, filtered.names[[ii]]$filtRs, truncLen=c(240,160),
+  #                      maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
+  #                      compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
+  # head(out)
+
+
+# Learn the error rates ---------------------------------------------------
+
+errF <- learnErrors(filtered.names[[2]][[1]][[1]], multithread=FALSE)
+
+# Dereplication -----------------------------------------------------------
+
+
+# Sample Inference --------------------------------------------------------
+
+
+# Merge Paired Reads ------------------------------------------------------
+
+
+# Construct Sequence Table ------------------------------------------------
+
+
+# Remove Chimeras ---------------------------------------------------------
+
+
+# Track Reads Through Pipeline --------------------------------------------
+
+
+# Assign Taxonomy ---------------------------------------------------------
+
+
+# Evaluate Accuracy -------------------------------------------------------
+
+
+# USearch or Phyloseq -----------------------------------------------------
+
 
