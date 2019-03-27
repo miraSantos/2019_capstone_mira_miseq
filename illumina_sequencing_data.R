@@ -16,7 +16,7 @@ help(package="dada2")
 
 #following this tutorial: https://benjjneb.github.io/dada2/tutorial.html
 # set up basepath  ---------------------------------------------------------
-base.path = "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/2019_capstone_mira/"
+base.path = "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/sequencing_data/"
 list.files(base.path)
 fq.base.path <- paste(base.path,"/fastq_files/",sep="")
 setwd(fq.base.path)
@@ -43,13 +43,21 @@ for (ii in 1: length(sub.path)){
 
 # create_sample_names -----------------------------------------------------
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
-sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 6)
-
-for(i in 1:length(sub.path)){
-sample.names <- sapply(strsplit(basename(fq.file.names[[i]]$fnFs), "_"), `[`, 6)
+sample.names <- rep(list(list(list(),list())),length(sub.path))
+names(sample.names) <- subfile.names
+for (ii in 1: length(sub.path)){
+  names(sample.names[[ii]]) <- c("fnFs","fnRs")  
+  
 }
+sample.names[[1]][[1]] <- sapply(strsplit(basename(fq.file.names[[1]]$fnFs), "_"), `[`, 6)
+sample.names[[1]][[2]] <- sapply(strsplit(basename(fq.file.names[[1]]$fnRs), "_"), `[`, 6)
+
+sample.names[[2]][[1]] <- sapply(strsplit(basename(fq.file.names[[2]]$fnFs), "_"), `[`, 3)
+sample.names[[2]][[2]] <- sapply(strsplit(basename(fq.file.names[[2]]$fnRs), "_"), `[`, 3)
+
+sample.names
 #inspect quality
-plotQualityProfile(fnFs[12])
+plotQualityProfile(fq.file.names$Bact$fnFs)
 
 #create new folder called filtered
 dir.create(paste(base.path,"/filtered",sep=""))
