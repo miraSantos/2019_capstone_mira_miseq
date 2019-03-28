@@ -67,7 +67,7 @@ dir.create(plot.path)
 for(ii in 1:(length(fq.file.names)*2)){
   for(jj in 1:length(fq.file.names[[1]])){
    for(kk in 1:length(fq.file.names[[1]][[1]])){
-     print(paste(ii, "of",length(fq.file.names),jj, "of",length(fq.file.names[[1]]),kk, "of",length(fq.file.names[[1]][[1]])))
+     print(paste(ii, "of",length(fq.file.names),"|",jj, "of",length(fq.file.names[[1]]),"|",kk, "of",length(fq.file.names[[1]][[1]])))
     plot <- plotQualityProfile(fq.file.names[[ii]][[jj]][[kk]])
     print(plot)
     dev.copy(pdf,paste(plot.path,"/Plot_",sample.names[[ii]][[jj]][[kk]],".pdf",sep=""))
@@ -116,8 +116,7 @@ for (ii in 1: length(sub.path)){
 
 #test run
 
-
-
+#should I save this variable? Will it be different everytime?
 trimmed.Bact <- filterAndTrim(fq.file.names[[1]][[1]], filtered.names[[1]][[1]], fq.file.names[[1]][[2]], filtered.names[[1]][[2]], truncLen=0,
                      maxN=0, truncQ=2, rm.phix=FALSE,
                      compress=TRUE, multithread=FALSE)
@@ -137,16 +136,60 @@ head(trimmed.Euk)
 
 # Learn the error rates ---------------------------------------------------
 
-errF <- learnErrors(filtered.names[[2]][[1]][[1]], multithread=FALSE)
+for (ii in 1:length(filtered.names)){
+    Euk.errF <- learnErrors(filtered.names[[ii]][[1]][1:length(fq.file.names[[ii]][[1]])], multithread=TRUE)
+    Euk.errR <- learnErrors(filtered.names[[ii]][[2]][1:length(fq.file.names[[ii]][[2]])], multithread=TRUE)
+    
+}
+
+Euk.errF <- learnErrors(filtered.names[[1]][[1]][1:length(fq.file.names[[1]][[1]])], multithread=TRUE)
+plotErrors(Euk.errF, nominalQ=TRUE)
+
+Euk.errR <- learnErrors(filtered.names[[1]][[2]][1:length(fq.file.names[[1]][[2]])], multithread=TRUE)
+plotErrors(Euk.errR, nominalQ=TRUE)
+
+#should I make multithread true or false?
+
+V.errF <- learnErrors(filtered.names[[2]][[1]][1:length(fq.file.names[[2]][[1]])], multithread=TRUE)
+plotErrors(V.errF, nominalQ=TRUE)
+
+V.errR <- learnErrors(filtered.names[[2]][[2]][1:length(fq.file.names[[2]][[2]])], multithread=TRUE)
+plotErrors(V.errR, nominalQ=TRUE)
+
+master <- list('Euk.errF' = Euk.errF,'Euk.errR' = Euk.errR, 'V.errF'= V.errF, 'V.errR' = V.errR) 
+
+error.plot.path <- paste(base.path,"/Error_Rate_Plots",sep="")
+dir.create(error.plot.path)
+
+plot <- plotErrors(Euk.errF, nominalQ=TRUE)
+print(plot)
+dev.copy(pdf,paste(error.plot.path,"/Plot_Euk.errF",".pdf",sep=""))
+dev.off()
+dev.off()
+dev.cur()
+plotErrors(Euk.errR, nominalQ=TRUE)
+plotErrors(V.errF, nominalQ=TRUE)
+plotErrors(V.errR, nominalQ=TRUE)
+
 
 # Dereplication -----------------------------------------------------------
 
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+# Name the derep-class objects by the sample names
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
 
 # Sample Inference --------------------------------------------------------
 
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
 
 # Merge Paired Reads ------------------------------------------------------
 
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Inspect the merger data.frame from the first sample
+head(mergers[[1]])
 
 # Construct Sequence Table ------------------------------------------------
 
