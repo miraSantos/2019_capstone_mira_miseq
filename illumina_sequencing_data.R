@@ -136,53 +136,65 @@ head(trimmed.Euk)
 
 # Learn the error rates ---------------------------------------------------
 
-for (ii in 1:length(filtered.names)){
-    Euk.errF <- learnErrors(filtered.names[[ii]][[1]][1:length(fq.file.names[[ii]][[1]])], multithread=TRUE)
-    Euk.errR <- learnErrors(filtered.names[[ii]][[2]][1:length(fq.file.names[[ii]][[2]])], multithread=TRUE)
-    
-}
-
-Euk.errF <- learnErrors(filtered.names[[1]][[1]][1:length(fq.file.names[[1]][[1]])], multithread=TRUE)
-plotErrors(Euk.errF, nominalQ=TRUE)
-
-Euk.errR <- learnErrors(filtered.names[[1]][[2]][1:length(fq.file.names[[1]][[2]])], multithread=TRUE)
-plotErrors(Euk.errR, nominalQ=TRUE)
-
-#should I make multithread true or false?
-
-V.errF <- learnErrors(filtered.names[[2]][[1]][1:length(fq.file.names[[2]][[1]])], multithread=TRUE)
-plotErrors(V.errF, nominalQ=TRUE)
-
-V.errR <- learnErrors(filtered.names[[2]][[2]][1:length(fq.file.names[[2]][[2]])], multithread=TRUE)
-plotErrors(V.errR, nominalQ=TRUE)
-
-master <- list('Euk.errF' = Euk.errF,'Euk.errR' = Euk.errR, 'V.errF'= V.errF, 'V.errR' = V.errR) 
+#making data frame to hold objects
 
 error.plot.path <- paste(base.path,"/Error_Rate_Plots",sep="")
 dir.create(error.plot.path)
+dir.create(paste(error.plot.path,"/",subfile.names[1],sep = ""))
+dir.create(paste(error.plot.path,"/",,sep = ""))
 
-plot <- plotErrors(Euk.errF, nominalQ=TRUE)
-print(plot)
-dev.copy(pdf,paste(error.plot.path,"/Plot_Euk.errF",".pdf",sep=""))
+Error_Rates <- rep(list(list()),length(sub.path))
+names(Error_Rates) <- subfile.names
+
+for (ii in 1:length(filtered.names)){
+    errF <- learnErrors(filtered.names[[ii]][[1]][1:length(filtered.names[[ii]][[1]])], multithread=TRUE)
+    errR <- learnErrors(filtered.names[[ii]][[2]][1:length(filtered.names[[ii]][[2]])], multithread=TRUE)
+  Error_Rates[[ii]]$errF <- errF
+  Error_Rates[[ii]]$errR <- errR
+}
+
+errF <- learnErrors(filtered.names[[1]][[1]][1:length(filtered.names[[ii]][[1]])], multithread=TRUE)
+errR <- learnErrors(filtered.names[[ii]][[2]][1:length(filtered.names[[ii]][[2]])], multithread=TRUE)
+Error_Rates[[ii]]$errF <- errF
+Error_Rates[[ii]]$errR <- errR
+
+#creating path for subplots
+sub.plot.path <- paste(error.plot.path,"/",subfile.names[ii],sep = "")
+dir.create(sub.plot.path)
+
+#plotting the errors
+plot.F <- plotErrors(errF, nominalQ=TRUE)
+print(plot.F)
+dev.copy(pdf,paste(sub.plot.path,"/Plot_",subfile.names[ii],"__errF__",".pdf",sep=""))
 dev.off()
 dev.off()
 dev.cur()
-plotErrors(Euk.errR, nominalQ=TRUE)
-plotErrors(V.errF, nominalQ=TRUE)
-plotErrors(V.errR, nominalQ=TRUE)
+
+plot.R <- plotErrors(errR, nominalQ=TRUE)
+print(plot.R)
+dev.copy(pdf,paste(error.plot.path,"/Plot_",subfile.names[ii],"__errR__",".pdf",sep=""))
+dev.off()
+dev.off()
+dev.cur()
+
 
 
 # Dereplication -----------------------------------------------------------
+derep.names <- rep(list(list(list(),list())),length(sub.path))
+names(derep.names) <- subfile.names
+for (ii in 1: length(sub.path)){
+  names(derep.names[[ii]]) <- c("derepFs","derepRs")  
+}
 
-derepFs <- derepFastq(filtFs, verbose=TRUE)
-derepRs <- derepFastq(filtRs, verbose=TRUE)
+derepFs <- derepFastq(filtered.files[[ii]]$filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtered.files[[ii]]$filtRs, verbose=TRUE)
 # Name the derep-class objects by the sample names
 names(derepFs) <- sample.names
 names(derepRs) <- sample.names
 
 # Sample Inference --------------------------------------------------------
 
-dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaFs <- dada(derepFs, err=Erorr_Rates errF, multithread=TRUE)
 dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
 
 # Merge Paired Reads ------------------------------------------------------
