@@ -1,4 +1,20 @@
-library(dada2) #packageVersion("dada2")
+if (!requireNamespace("BiocManager"))
+  install.packages("BiocManager")
+BiocManager::install()
+
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("dada2", version = "3.8")
+
+
+install.packages("C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/dada2-1.10",
+                 repos = NULL,
+                 type = "source",
+                 dependencies = c("Depends", "Suggests","Imports"))
+
+
+library("dada2") #packageVersion("dada2")
 path <- "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/sequencing_data/fastq_files/V4_515F_New_V4_806R_New"
 
 
@@ -62,9 +78,9 @@ errR <- learnErrors(filtRs, multithread=FALSE) #okay I tried it with multithread
 plotErrors(errF, nominalQ=TRUE)
 plotErrors(errR, nominalQ=TRUE)
 
-Dereplication -----------------------------------------------------------
+#Dereplication -----------------------------------------------------------
   
-  derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepFs <- derepFastq(filtFs, verbose=TRUE)
 derepRs <- derepFastq(filtRs, verbose=TRUE)
 # Name the derep-class objects by the sample names
 names(derepFs) <- sample.names
@@ -112,8 +128,9 @@ head(track)
 
 # Assign Taxonomy ---------------------------------------------------------
 
-taxa <- assignTaxonomy(seqtab.nochim, "~/tax/silva_nr_v128_train_set.fa.gz", multithread=TRUE)
-taxa <- addSpecies(taxa, "~/tax/silva_species_assignment_v128.fa.gz")
+setwd("C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/ref_databases/")
+taxa <- assignTaxonomy(seqtab.nochim, "silva_nr_v128_train_set.fa.gz", multithread=FALSE)
+taxa <- addSpecies(taxa, "silva_species_assignment_v128.fa.gz")
 
 
 
