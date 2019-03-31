@@ -162,4 +162,4 @@ samples.out <- rownames(seqtab.nochim)
 #constructing phyloseq object
 
 ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE),sample_data(samdf),tax_table(taxa))
-
+#dd
