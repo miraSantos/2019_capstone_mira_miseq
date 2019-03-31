@@ -131,15 +131,15 @@ head(track)
 set.seed(100)
 
 
-setwd("C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/ref_databases/")
-taxa <- assignTaxonomy(seqtab.nochim, "silva_nr_v132_train_set.fa.gz", multithread=FALSE)
+ref.path <- "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/ref_databases/"
+taxa <- assignTaxonomy(seqtab.nochim, paste0(ref.path,"silva_nr_v132_train_set.fa.gz"), multithread=FALSE, tryRC = TRUE)
 
 #OTHER DATABASES
-taxa <- assignTaxonomy(seqtab.nochim, "gg_13_8_train_set_97.fa.gz", multithread=FALSE)
-taxa <- assignTaxonomy(seqtab.nochim, "rdp_train_set_16.fa.gz", multithread=FALSE)
+taxa <- assignTaxonomy(seqtab.nochim,  paste0(ref.path,"gg_13_8_train_set_97.fa.gz"), multithread=FALSE,tryRC = TRUE)
+taxa <- assignTaxonomy(seqtab.nochim,  paste0(ref.path,"rdp_train_set_16.fa.gz"), multithread=FALSE, tryRC = TRUE)
 
 #add species (additonal step)
-taxa <- addSpecies(taxa, "silva_species_assignment_v132.fa.gz")
+taxa <- addSpecies(taxa,  paste0(ref.path,"silva_species_assignment_v132.fa.gz"))
 
 #Inspect the Assignments
 taxa.print <- taxa # Removing sequence rownames for display only
@@ -156,7 +156,7 @@ BiocManager::install("DECIPHER", version = "3.8")
 library(DECIPHER); packageVersion("DECIPHER")
 
 dna <- DNAStringSet(getSequences(seqtab.nochim)) # Create a DNAStringSet from the ASVs
-load("~/tax/IDTaxa/SILVA_SSU_r132_March2018.RData") # CHANGE TO THE PATH OF YOUR TRAINING SET
+load(paste0(ref.path,"SILVA_SSU_r132_March2018.RData")) # CHANGE TO THE PATH OF YOUR TRAINING SET
 ids <- IdTaxa(dna, trainingSet, strand="top", processors=NULL, verbose=FALSE) # use all processors
 ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species") # ranks of interest
 # Convert the output object of class "Taxa" to a matrix analogous to the output from assignTaxonomy

@@ -128,8 +128,8 @@ head(track)
 
 # Assign Taxonomy ---------------------------------------------------------
 
-setwd("C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/ref_databases/")
-taxa <- assignTaxonomy(seqtab.nochim, "silva_nr_v128_train_set.fa.gz", multithread=FALSE)
+ref.path <- "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/ref_databases/"
+taxa <- assignTaxonomy(seqtab.nochim,paste0(ref.path,"silva_nr_v128_train_set.fa.gz"), multithread=FALSE)
 taxa <- addSpecies(taxa, "silva_species_assignment_v128.fa.gz")
 
 
@@ -137,4 +137,29 @@ taxa <- addSpecies(taxa, "silva_species_assignment_v128.fa.gz")
 # Alternative Way w/ Decipher ---------------------------------------------
 
 library(DECIPHER); packageVersion("DECIPHER")
+
+dna <- DNAStringSet(getSequences(seqtab.nochim)) # Create a DNAStringSet from the ASVs
+load(paste0(ref.path,"SILVA_SSU_r132_March2018.RData")) # CHANGE TO THE PATH OF YOUR TRAINING SET
+ids <- IdTaxa(dna, trainingSet, strand="top", processors=NULL, verbose=FALSE) # use all processors
+ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species") # ranks of interest
+# Convert the output object of class "Taxa" to a matrix analogous to the output from assignTaxonomy
+taxid <- t(sapply(ids, function(x) {
+  m <- match(ranks, x$rank)
+  taxa <- x$taxon[m]
+  taxa[startsWith(taxa, "unclassified_")] <- NA
+  taxa
+}))
+colnames(taxid) <- ranks; rownames(taxid) <- getSequences(seqtab.nochim)
+
+# hand-off to phyloseq ----------------------------------------------------
+
+library(phyloseq); packageVersion("phyloseq")
+library(ggplot2); packageVersion("ggplot2")
+
+samples.out <- rownames(seqtab.nochim)
+
+
+#constructing phyloseq object
+
+ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE),sample_data(samdf),tax_table(taxa))
 
