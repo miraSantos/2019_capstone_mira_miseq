@@ -174,3 +174,11 @@ colnames(taxid) <- ranks; rownames(taxid) <- getSequences(seqtab.nochim)
 unqs.mock <- seqtab.nochim["Mock",]
 unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) # Drop ASVs absent in the Mock
 cat("DADA2 inferred", length(unqs.mock), "sample sequences present in the Mock community.\n")
+
+
+
+# Pass off to phyloseq ----------------------------------------------------
+library(phyloseq); packageVersion("phyloseq")
+library(ggplot2); packageVersion("ggplot2")
+
+head(seqtab.nochim) 
