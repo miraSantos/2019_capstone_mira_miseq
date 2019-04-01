@@ -1,13 +1,8 @@
-if (!requireNamespace("BiocManager"))
-  install.packages("BiocManager")
-BiocManager::install()
-
-
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 BiocManager::install("dada2", version = "3.8")
 
-
+#manual installation option (without BioCManager)
 install.packages("C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/dada2-1.10",
                  repos = NULL,
                  type = "source",
