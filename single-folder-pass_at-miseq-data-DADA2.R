@@ -6,6 +6,9 @@ biocLite("devtools")
 library("devtools")
 devtools::install_github("benjjneb/dada2") # use the ref="v1.10" (e.g.) argument to get specific versions
 
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("dada2", version = "3.8")
 
 library(dada2);packageVersion("dada2")
 path <- "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/sequencing_data/fastq_files/Euk_1391f_EukBr"
@@ -36,6 +39,7 @@ filtRs <- file.path(filt.path, paste0(sample.names, "_R_filt.fastq.gz"))
 #installing cutadapt
 system("pip3 install --user --upgrade cutadapt")
 setwd("C:/Users/mps48/AppData/Roaming/Python/Python36/Scripts")
+system("cd C:/Users/mps48/AppData/Roaming/Python/Python36/Scripts")
 system("cutadapt --help")
 
 #check quality score encoding?
@@ -64,6 +68,7 @@ for (ii in 1:length(fnRs)){
 out <- filterAndTrim(filtFs_CA, filtFs, filtRs_CA, filtRs, rm.phix=FALSE,
                      compress=TRUE, multithread=FALSE) # On Windows set multithread=FALSE
 head(out)
+
 
 
 # Learning Error Rates ----------------------------------------------------
@@ -125,17 +130,27 @@ head(track)
 # Assign Taxonomy ---------------------------------------------------------
 set.seed(100)
 
+
 setwd("C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/ref_databases/")
-taxa <- assignTaxonomy(seqtab.nochim, "silva_nr_v132_train_set.fa.gz", multithread=TRUE)
+taxa <- assignTaxonomy(seqtab.nochim, "silva_nr_v132_train_set.fa.gz", multithread=FALSE,tryRC = TRUE)
+
+#OTHER DATABASES
 taxa <- assignTaxonomy(seqtab.nochim, "gg_13_8_train_set_97.fa.gz", multithread=FALSE)
 taxa <- assignTaxonomy(seqtab.nochim, "rdp_train_set_16.fa.gz", multithread=FALSE)
-taxa <- addSpecies(taxa, "C:/Users/mps48/Documents/1111AAA_2019_Spring/Capstone/Sequencing/silva_species_assignment_v128.fa")
+
+#add species (additonal step)
+taxa <- addSpecies(taxa, "silva_species_assignment_v132.fa.gz")
+
+#Inspect the Assignments
+taxa.print <- taxa # Removing sequence rownames for display only
+rownames(taxa.print) <- NULL
+head(taxa.print)
 
 
-
-
+#write data to a table and share
+write.table(taxa.print, "F:/Sequencing_Data/tables_taxa/euks_taxa_print.txt", sep= "\t")
 # Alternative Way w/ Decipher ---------------------------------------------
-
+#I did not do this
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 BiocManager::install("DECIPHER", version = "3.8")
@@ -154,4 +169,12 @@ taxid <- t(sapply(ids, function(x) {
   taxa
 }))
 colnames(taxid) <- ranks; rownames(taxid) <- getSequences(seqtab.nochim)
+
+
+# Evaluate accuracy -------------------------------------------------------
+
+unqs.mock <- seqtab.nochim["Mock",]
+unqs.mock <- sort(unqs.mock[unqs.mock>0], decreasing=TRUE) # Drop ASVs absent in the Mock
+cat("DADA2 inferred", length(unqs.mock), "sample sequences present in the Mock community.\n")
+
 
