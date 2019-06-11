@@ -1,13 +1,13 @@
 
 # INSTALLATION ------------------------------------------------------------
+#CHECK TO MAKE SURE YOU HAVE LATEST VERSION OF R
 
 #DADA2 Installation
-biocLite(suppressUpdates = FALSE)
-biocLite("ShortRead", suppressUpdates = FALSE)
+source('http://bioconductor.org/biocLite.R')
 
 biocLite("devtools")
 library("devtools")
-devtools::install_github("benjjneb/dada2") # use the ref="v1.10" (e.g.) argument to get specific versions
+devtools::install_github("benjjneb/dada2") 
 
 #loading dada2 for sequence inference
 library(dada2);packageVersion("dada2")
@@ -15,14 +15,11 @@ library(dada2);packageVersion("dada2")
 #installing Biostrings for finding reverse and complement of primers
 library(Biostrings)
 
-#installing cutadapt for trimming
-system("pip3 install --user --upgrade cutadapt")
-#when you install cutadapt the console should list where cutadapt.exe was stored. copy this filepath name below
-cutadapt.path <- 'C:/Users/mps48/AppData/Roaming/Python/Python36/Scripts'
-
 #installing phyloseq for visualization
-install.packages("phyloseq")
-library(phyloseq); packageVersion("phyloseq")
+source('http://bioconductor.org/biocLite.R')
+biocLite('phyloseq')
+# install.packages("phyloseq")
+# library(phyloseq); packageVersion("phyloseq")
 
 #installing ggplot2 for plotting (phyloseq needs this)
 install.packages("ggplot2")
@@ -33,18 +30,25 @@ install.packages("RColorBrewer")
 library(RColorBrewer); packageVersion("RColorBrewer")
 
 #installing MSA for mutiple sequence alignment with phyloseq
-BiocManager::install("msa")
-library("msa")
+source('http://bioconductor.org/biocLite.R')
+biocLite('msa')
 
 # USER INPUT -------------------------------------------------------
+#make a folder called seq_dada2
+
 #1. Create a folder called Seq_DADA2 and set the path to it below (make sure to use forward slashes)
 base.path <-"D:/Seq_DADA2"
+
+dir.create(base.path,"/cutadapt")
+system(paste0("pip3 install --target=",base.path,"/cutadapt"," cutadapt"))
+
 
 #2. place your folder of fastq files (make sure the folder is called fastq_files) inside the Seq_DADA2 folder. It's okay if they are zipped.
 path <- paste0(base.path,"/fastq_files/")
 
 #3. Download your preferred reference database (http://benjjneb.github.io/dada2/training.html) 
 #save it to the Seq_DADA2 folder and write down the file name below
+dir.create(paste0(base.path,"/ref_databases"))
 ref.path <-paste0(base.path,"/ref_databases/silva_132.18s.99_rep_set.dada2.fa.gz")
 
 #4. setting up sample filenames
@@ -64,23 +68,27 @@ sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`,sample.name.num)
 forwardP <- "GTACACACCGCCCGTC"   # e.g. forwardP <-"ATCGATACT"
 reverseP <- "TGATCCTTCTGCAGGTTCACCTAC"   # e.g. forwardP <-"ACCTATAGC"
 
+forwardP <- "GTACACACCGCCCGTC"   # e.g. forwardP <-"ATCGATACT"
+reverseP <- "TGATCCTTCTGCAGGTTCACCTAC"   # e.g. forwardP <-"ACCTATAGC"
+
 #SET QUALITY THRESHOLDS see (https://cutadapt.readthedocs.io/en/stable/guide.html#quality-trimming) for more details
 q.score <- "10,15" # qscore <-(5'end score),(3'end score)
-
+e.score <- "0.2" #e.score e.g. 0.2
+l.score <-"150" #l.score
 # Plotting Quality Profiles -----------------------------------------------
 dir.create(paste0(base.path,"/quality.profile.plots/"))
 
 for (ii in 1:length(fnFs)){
-  pdf(paste0(base.path,"/quality.profile.plots/","Forward-",sample.names[ii],".pdf"))
   plotQualityProfile(fnFs[ii])
-  dev.off()
+  ggsave(paste0(base.path,'/quality.profile.plots/',"Forward-",sample.names[ii],'.pdf'))
+  dev.cur()
   print(paste0(ii," of ", length(fnFs)))
 }
 
 for (jj in 1:length(fnRs)){
-  pdf(paste0(base.path,"/quality.profile.plots/","Reverse-",sample.names[jj],".pdf"))
   plotQualityProfile(fnRs[jj])
-  dev.off()
+  ggsave(paste0(base.path,'/quality.profile.plots/',"Reverse-",sample.names[jj],'.pdf'))
+  dev.cur()
   print(paste0(jj," of ", length(fnRs)))
 }
 
@@ -98,19 +106,18 @@ filtFs <- file.path(filt.path, paste0(sample.names, "_F_filt.fastq.gz"))
 filtRs <- file.path(filt.path, paste0(sample.names, "_R_filt.fastq.gz"))
 
 #Routing through cutadapt
-setwd(cutadapt.path)
-system("cutadapt --help")
+system(paste0(base.path,"/cutadapt/bin/cutadapt cutadapt --help"))
 
 #-a is for 3' trimming
 #-g is for 5' trimming
 for (ii in 1:length(fnFs)){
-  text <- paste0("cutadapt -g ",forwardP," -a ",paste0(reverseComplement(DNAStringSet(reverseP)))," -q 2,2 -e 0.2 -l 150 -o ", filtFs_CA[ii]," ",fnFs[ii])
+  text <- paste0(base.path,"/cutadapt/bin/cutadapt -g ",forwardP," -a ",paste0(reverseComplement(DNAStringSet(reverseP)))," -q ",q.score," -e ",e.score," -l ",l.score," -o ",filtFs_CA[ii]," ",fnFs[ii])
   system(text)
   print(paste(ii ," of ", length(fnFs)))
 }
 
 for (ii in 1:length(fnRs)){
-  text <- paste0("cutadapt -g ",reverseP," -a ",paste0(reverseComplement(DNAStringSet(forwardP))),"  -q 2,2 -e0.2 -l 150  -o ", filtRs_CA[ii]," ",fnRs[ii])
+  text <- paste0(base.path,"/cutadapt/bin/cutadapt -g ",reverseP," -a ",paste0(reverseComplement(DNAStringSet(forwardP)))," -q ",q.score," -e 0.2 -l 150  -o ", filtRs_CA[ii]," ",fnRs[ii])
   system(text)
   print(paste(ii ," of ", length(fnRs)))
 }
