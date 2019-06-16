@@ -8,7 +8,7 @@ install.packages("BiocManager")
 
 BiocManager::install("devtools")
 library("devtools")
-devtools::install_github("benjjneb/dada2") 
+devtools::install_github("benjjneb/dada2",force = TRUE) 
 
 #loading dada2 for sequence inference
 library(dada2);packageVersion("dada2")
@@ -36,6 +36,15 @@ install.packages("phangorn")
 library("phangorn")
 
 #make sure you have latest version of python!! (python.org)
+
+#libraries
+library(dada2);packageVersion("dada2")
+library("devtools")
+library("msa")
+library(RColorBrewer); packageVersion("RColorBrewer")
+library(Biostrings)
+library(ggplot2); packageVersion("ggplot2")
+
 
 # USER INPUT -------------------------------------------------------
 #make a folder called seq_dada2
@@ -244,17 +253,20 @@ detach("package:phangorn", unload=TRUE)
 
 head(seqtab.nochim)
 
-samples.out <- rownames(seqtab.nochim)
-filter <- references$Filter 
+filter <- factor(references$Filter)
+filter.name <-factor(references$Filter.name,levels=c("0.2","3","10"))
 site <- references$Station
 cast <- references$Cast
-day <- references$Day
-samdf <- data.frame(filter=filter, site= site, cast=cast,day = day)
+day <- factor(references$Day)
+site.name <- factor(references$Site)
+site.name.par <- factor(references$site.name.par, levels = c("Offshore","Onshore","Mangroves"))
+date.name <- factor(references$Date.Name, levels = c("Oct.4","Dec.4","Dec.6","Jan.16","Jan.17"))
+
+samdf <- data.frame(filter=filter, site= site, cast=cast,day = day,site.name.par=site.name.par,site.name=site.name,date.name=date.name,filter.name=filter.name)
 rownames(samdf) <- samples.out
 
 
-
-ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE),sample_data(samdf),tax_table(taxa),phy_tree(fitGTR$tree))
+ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE),sample_data(samdf),tax_table(taxa))
 ps <- prune_samples(sample_names(ps) != "Mock", ps) # Remove mock sample
 taxa_names(ps) <- paste0("Seq", seq(ntaxa(ps)))
 
@@ -325,7 +337,7 @@ ps.top.melted$filter.name <- factor(ps.top.melted$filter.name, levels = c("0.2",
 ggplot(ps.top.melted, aes(fill=Phylum,y=Abundance,x=factor(date.name)))+ 
   facet_wrap(~site.name.par,scales ="free_x")+
   geom_bar( stat="identity", position="fill")+
-  scale_fill_manual(values = getPalette(8))+
+  scale_fill_manual(values = getPalette(13))+
   theme(axis.text.x = element_text(angle = 45,hjust=1),text=element_text(size=18))+
   xlab("Day")+
   ylab("Relative Abundance")
@@ -345,7 +357,7 @@ ps.top.melted$filter.name
 ggplot(ps.top.melted, aes(fill=Phylum,x=factor(filter.name),y=Abundance))+ 
   facet_wrap(~site.name.par,scales ="free_x")+
   geom_bar( stat="identity",position="fill")+
-  scale_fill_manual(values = getPalette(8))+
+  scale_fill_manual(values = getPalette(20))+
   theme(text=element_text(size=18))+
   xlab(expression("Filter Size ("*mu*"m)"))+
   ylab("Relative Abundance")
