@@ -32,6 +32,9 @@ library(RColorBrewer); packageVersion("RColorBrewer")
 BiocManager:install("msa")
 library("msa")
 
+install.packages("phangorn")
+library("phangorn")
+
 #make sure you have latest version of python!! (python.org)
 
 # USER INPUT -------------------------------------------------------
@@ -65,6 +68,8 @@ sample.name.num <- 3
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`,sample.name.num)
 
+
+#5. Setting up primers
 #PRIMER IN STRING FORM (5'-> 3')
 ##18S PRIMERS
 forwardP <- "GTACACACCGCCCGTC"   # e.g. forwardP <-"ATCGATACT"
@@ -74,10 +79,15 @@ reverseP <- "TGATCCTTCTGCAGGTTCACCTAC"   # e.g. forwardP <-"ACCTATAGC"
 forwardP <- "GTACACACCGCCCGTC"   # e.g. forwardP <-"ATCGATACT"
 reverseP <- "TGATCCTTCTGCAGGTTCACCTAC"   # e.g. forwardP <-"ACCTATAGC"
 
-#SET QUALITY THRESHOLDS see (https://cutadapt.readthedocs.io/en/stable/guide.html#quality-trimming) for more details
+
+#6. Setting quality thresholds see (https://cutadapt.readthedocs.io/en/stable/guide.html#quality-trimming) for more details
 q.score <- "10,15" # qscore <-(5'end score),(3'end score)
 e.score <- "0.2" #e.score e.g. 0.2
 l.score <-"150" #l.score
+
+#7. setting up metadata bout sampling
+references <- read.csv("D:/Sequencing_Data/Station_Cast_Filter_References.csv",header = TRUE, sep = ",")
+
 # Plotting Quality Profiles -----------------------------------------------
 dir.create(paste0(base.path,"/quality.profile.plots/"))
 
@@ -217,8 +227,6 @@ names(seqs) <- seqs
 
 mult <- msa(seqs, method="ClustalW", type="dna", order="input")
 
-install.packages("phangorn")
-library("phangorn")
 phang.align <- as.phyDat(mult, type="DNA", names=getSequence(seqtab))
 dm <- dist.ml(phang.align)
 treeNJ <- NJ(dm) # Note, tip order != sequence order
@@ -236,7 +244,6 @@ detach("package:phangorn", unload=TRUE)
 
 head(seqtab.nochim)
 
-references <- read.csv("D:/Sequencing_Data/Station_Cast_Filter_References.csv",header = TRUE, sep = ",")
 samples.out <- rownames(seqtab.nochim)
 filter <- references$Filter 
 site <- references$Station
@@ -262,7 +269,6 @@ phy_tree(ps)
 taxa_names(ps)[1:10]
 
 # phy_tree ----------------------------------------------------------------
-
 
 myTaxa = names(sort(taxa_sums(ps),decreasing=TRUE)[1:10])
 ex1 = prune_taxa(myTaxa,ps)
@@ -293,7 +299,7 @@ ps.4.pr = subset_taxa(ps.4.pr, Class !="Chloroplastida")
 ps.4.pr
 
 
-
+#prints out percentages of taxa that were identified by the database
 sums<-c(sum(is.na(taxa.print[,1]))/length(taxa.print[,1]),
         sum(is.na(taxa.print[,2]))/length(taxa.print[,2]),
         sum(is.na(taxa.print[,3]))/length(taxa.print[,3]),
@@ -302,7 +308,6 @@ sums<-c(sum(is.na(taxa.print[,1]))/length(taxa.print[,1]),
         sum(is.na(taxa.print[,6]))/length(taxa.print[,6]),
         sum(is.na(taxa.print[,7]))/length(taxa.print[,7])
 )
-
 
 # Bar Plots ---------------------------------------------------------------
 
@@ -325,6 +330,9 @@ ggplot(ps.top.melted, aes(fill=Phylum,y=Abundance,x=factor(date.name)))+
   xlab("Day")+
   ylab("Relative Abundance")
 
+dir.create(paste0(base.path,"/plots"))
+ggsave(paste0(base.path,"/plots/","phylum.site.day.pdf"))
+
 #PHYLUM.SITE.FILTER
 getPalette = colorRampPalette(brewer.pal(12, "Paired"),bias = 1,interpolate = "spline")
 top <- names(sort(taxa_sums(ps.4.pr), decreasing=TRUE))[1:n.seq]
@@ -342,8 +350,20 @@ ggplot(ps.top.melted, aes(fill=Phylum,x=factor(filter.name),y=Abundance))+
   xlab(expression("Filter Size ("*mu*"m)"))+
   ylab("Relative Abundance")
 
+ggsave(paste0(base.path,"/plots/","phylum.site.filter.pdf"))
+
 # Ordination Plots --------------------------------------------------------
 ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
-ord.pcoa.bray <- ordinate(ps.prop, method="PCoA", distance="bray")
+ord.pca.bray <- ordinate(ps.prop, method="PCoA", distance="bray")
+
+plot_ordination(ps.prop, ord.pcoa.bray, color="filter", title="Bray PCoA")+ facet_wrap(~day,3)
+ggsave(paste0(base.path,"/plots/","pca.filter.day.pdf"))
+
+plot_ordination(ps.prop, ord.pcoa.bray, color="day", title="Bray PCoA")+ facet_wrap(~site,1)
+ggsave(paste0(base.path,"/plots/","pca.day.site.pdf"))
+
+plot_ordination(ps.prop, ord.pcoa.bray, color="filter", title="Bray PCoA")+ facet_wrap(~site,1)
+ggsave(paste0(base.path,"/plots/","pca.filter.site.pdf"))
+
 
 
