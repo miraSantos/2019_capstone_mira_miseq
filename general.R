@@ -3,9 +3,10 @@
 #CHECK TO MAKE SURE YOU HAVE LATEST VERSION OF R
 
 #DADA2 Installation
-source('http://bioconductor.org/biocLite.R')
+chooseCRANmirror()
+install.packages("BiocManager")
 
-biocLite("devtools")
+BiocManager::install("devtools")
 library("devtools")
 devtools::install_github("benjjneb/dada2") 
 
@@ -16,10 +17,8 @@ library(dada2);packageVersion("dada2")
 library(Biostrings)
 
 #installing phyloseq for visualization
-source('http://bioconductor.org/biocLite.R')
-biocLite('phyloseq')
-# install.packages("phyloseq")
-# library(phyloseq); packageVersion("phyloseq")
+BiocManager::install("phyloseq")
+library(phyloseq); packageVersion("phyloseq")
 
 #installing ggplot2 for plotting (phyloseq needs this)
 install.packages("ggplot2")
@@ -30,8 +29,10 @@ install.packages("RColorBrewer")
 library(RColorBrewer); packageVersion("RColorBrewer")
 
 #installing MSA for mutiple sequence alignment with phyloseq
-source('http://bioconductor.org/biocLite.R')
-biocLite('msa')
+BiocManager:install("msa")
+library("msa")
+
+#make sure you have latest version of python!! (python.org)
 
 # USER INPUT -------------------------------------------------------
 #make a folder called seq_dada2
@@ -65,9 +66,11 @@ sample.name.num <- 3
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`,sample.name.num)
 
 #PRIMER IN STRING FORM (5'-> 3')
+##18S PRIMERS
 forwardP <- "GTACACACCGCCCGTC"   # e.g. forwardP <-"ATCGATACT"
 reverseP <- "TGATCCTTCTGCAGGTTCACCTAC"   # e.g. forwardP <-"ACCTATAGC"
 
+##16S PRIMERS
 forwardP <- "GTACACACCGCCCGTC"   # e.g. forwardP <-"ATCGATACT"
 reverseP <- "TGATCCTTCTGCAGGTTCACCTAC"   # e.g. forwardP <-"ACCTATAGC"
 
@@ -133,12 +136,12 @@ errR <- learnErrors(filtRs, multithread=FALSE) #okay I tried it with multithread
 
 dir.create(paste0(base.path,"/error_plots/"))
 
-pdf(paste0(base.path,"/error_plots/","errF.pdf"))
 plotErrors(errF, nominalQ=TRUE)
+ggsave(paste0(base.path,"/error_plots/","errF.pdf"))
 dev.off()
 
-pdf(paste0(base.path,"/error_plots/","errR.pdf"))
 plotErrors(errR, nominalQ=TRUE)
+ggsave(paste0(base.path,"/error_plots/","errR.pdf"))
 dev.off()
 
 
@@ -205,9 +208,142 @@ length(which(taxa.print == "Bacillariophyceae")) #diatoms 63
 length(which(taxa.print == "Ochrophyta")) 
 
 seqs <- getSequences(seqtab)
-names(seqs) <- seqs # This propagates to the tip labels of the tree
+names(seqs) <- seqs
+
+
+
+# Building the Phylogenetic Tree ------------------------------------------
+
+
 mult <- msa(seqs, method="ClustalW", type="dna", order="input")
 
+install.packages("phangorn")
+library("phangorn")
+phang.align <- as.phyDat(mult, type="DNA", names=getSequence(seqtab))
+dm <- dist.ml(phang.align)
+treeNJ <- NJ(dm) # Note, tip order != sequence order
+fit = pml(treeNJ, data=phang.align)
 
-length(which(taxa.print == "Dinoflagellata")) #dinoflagellates 544
+## negative edges length changed to 0!
+
+fitGTR <- update(fit, k=4, inv=0.2)
+fitGTR <- optim.pml(fitGTR, model="GTR", optInv=TRUE, optGamma=TRUE,
+                    rearrangement = "stochastic", control = pml.control(trace = 0))
+detach("package:phangorn", unload=TRUE)
+
+
+# Visualization with Phyloseq ---------------------------------------------
+
+head(seqtab.nochim)
+
+references <- read.csv("D:/Sequencing_Data/Station_Cast_Filter_References.csv",header = TRUE, sep = ",")
+samples.out <- rownames(seqtab.nochim)
+filter <- references$Filter 
+site <- references$Station
+cast <- references$Cast
+day <- references$Day
+samdf <- data.frame(filter=filter, site= site, cast=cast,day = day)
+rownames(samdf) <- samples.out
+
+
+
+ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE),sample_data(samdf),tax_table(taxa),phy_tree(fitGTR$tree))
+ps <- prune_samples(sample_names(ps) != "Mock", ps) # Remove mock sample
+taxa_names(ps) <- paste0("Seq", seq(ntaxa(ps)))
+
+ntaxa(ps)
+nsamples(ps)
+sample_names(ps)[1:5]
+rank_names(ps)
+sample_variables(ps)
+otu_table(ps)[1:5,1:5]
+tax_table(ps)[1:5,1:5]
+phy_tree(ps)
+taxa_names(ps)[1:10]
+
+# phy_tree ----------------------------------------------------------------
+
+
+myTaxa = names(sort(taxa_sums(ps),decreasing=TRUE)[1:10])
+ex1 = prune_taxa(myTaxa,ps)
+plot(phy_tree(ex1),show.node.label = TRUE)
+
+plot_tree(ex1, color = "site",label.tips="Phylum",ladderize = "left", justify="left",size="Abundance")
+
+print(sums)
+# Pre-Processing ----------------------------------------------------------
+
+#Only OTUs wit ha mean greater than 10^-5 are kept
+ps.1 = filter_taxa(ps, function(x) mean(x) > 1e-5, TRUE)
+
+#removes samples with less than 20 reads
+ps.2 = prune_samples(sample_sums(ps.1)>=20, ps.1)
+
+#remove taxa not seen more than 3 times in the least 20% of the samples) protects gainst OTU with small mean and trivially large CV
+ps.3 = filter_taxa(ps.2, function(x) sum(x > 3) > (0.2*length(x)), TRUE)
+
+#standardize abudance to median sequencing depth
+total = median(sample_sums(ps.3))
+standf = function(x, t=total) round(t * (x / sum(x)))
+ps.4 = transform_sample_counts(ps.3, standf)
+ps.4
+
+ps.4.pr = subset_taxa(ps.4, Order !="Chloroplast")
+ps.4.pr = subset_taxa(ps.4.pr, Class !="Chloroplastida")
+ps.4.pr
+
+
+
+sums<-c(sum(is.na(taxa.print[,1]))/length(taxa.print[,1]),
+        sum(is.na(taxa.print[,2]))/length(taxa.print[,2]),
+        sum(is.na(taxa.print[,3]))/length(taxa.print[,3]),
+        sum(is.na(taxa.print[,4]))/length(taxa.print[,4]),
+        sum(is.na(taxa.print[,5]))/length(taxa.print[,5]),
+        sum(is.na(taxa.print[,6]))/length(taxa.print[,6]),
+        sum(is.na(taxa.print[,7]))/length(taxa.print[,7])
+)
+
+
+# Bar Plots ---------------------------------------------------------------
+
+
+#PHYLUM.SITE.DAY
+n.seq<-500
+set.seed(1)
+getPalette = colorRampPalette(brewer.pal(12, "Paired"),bias = 1,interpolate = "spline")
+top <- names(sort(taxa_sums(ps.4.pr), decreasing=TRUE))[1:n.seq]
+ps.top<- prune_taxa(top, ps.4.pr)
+ps.top.glom <- tax_glom(ps.top,"Phylum")
+ps.top.melted <- psmelt(ps.top.glom)
+ps.top.melted$date.name <- factor(ps.top.melted$date.name, levels = c("Oct.4","Dec.4","Dec.6","Jan.16","Jan.17"))
+ps.top.melted$filter.name <- factor(ps.top.melted$filter.name, levels = c("0.2","3","10"))
+ggplot(ps.top.melted, aes(fill=Phylum,y=Abundance,x=factor(date.name)))+ 
+  facet_wrap(~site.name.par,scales ="free_x")+
+  geom_bar( stat="identity", position="fill")+
+  scale_fill_manual(values = getPalette(8))+
+  theme(axis.text.x = element_text(angle = 45,hjust=1),text=element_text(size=18))+
+  xlab("Day")+
+  ylab("Relative Abundance")
+
+#PHYLUM.SITE.FILTER
+getPalette = colorRampPalette(brewer.pal(12, "Paired"),bias = 1,interpolate = "spline")
+top <- names(sort(taxa_sums(ps.4.pr), decreasing=TRUE))[1:n.seq]
+ps.top<- prune_taxa(top, ps.4.pr)
+# ps.top.glom <- tax_glom(ps.top,"Phylum")
+ps.top.melted <- psmelt(ps.top)
+ps.top.melted$date.name <- factor(ps.top.melted$date.name, levels = c("Oct.4","Dec.4","Dec.6","Jan.16","Jan.17"))
+ps.top.melted$filter.name <- factor(ps.top.melted$filter.name, levels = c("0.2","3","10"))
+ps.top.melted$filter.name 
+ggplot(ps.top.melted, aes(fill=Phylum,x=factor(filter.name),y=Abundance))+ 
+  facet_wrap(~site.name.par,scales ="free_x")+
+  geom_bar( stat="identity",position="fill")+
+  scale_fill_manual(values = getPalette(8))+
+  theme(text=element_text(size=18))+
+  xlab(expression("Filter Size ("*mu*"m)"))+
+  ylab("Relative Abundance")
+
+# Ordination Plots --------------------------------------------------------
+ps.prop <- transform_sample_counts(ps, function(otu) otu/sum(otu))
+ord.pcoa.bray <- ordinate(ps.prop, method="PCoA", distance="bray")
+
 
